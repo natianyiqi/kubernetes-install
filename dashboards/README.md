@@ -3,7 +3,7 @@
        在 Kubernetes 社区中，有一个很受欢迎的 Dashboard 项目，它可以给用户提供一个可视化的 Web 界面来查看当前集群的各种信息。用户可以用 Kubernetes Dashboard 部署容器化的应用、监控应用的状态、执行故障排查任务以及管理 Kubernetes 各种资源。
 ## 部署dashboard
        直接执行dashboard.yaml  
-       结果： 运行2个pod和service
+       结果： 运行2个pod和service              namespace: kubernetes-dashboard
 ## 暴露端口
  ### 命令行方式
     kubectl  patch svc kubernetes-dashboard -n kubernetes-dashboard \
