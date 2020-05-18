@@ -9,7 +9,7 @@
             apiVersion: networking.k8s.io/v1beta1          # kubernetes1.16之后改为该api，之前为extensions/v1beta1
             kind: Ingress
             metadata: 
-               name: grafana                                 
+               name: grafana                               # 名称   
                namespace: istio-system                     # namespace
             spec: 
                rules: 
