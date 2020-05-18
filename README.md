@@ -1,14 +1,14 @@
-#项目目录 
+# 项目目录  
   kubernetes  --ingress     --dashboard     --prometheus+grafana
  
-##下文是kubernetes安装过程，使用kubeadm，过程详细，供新手菜鸟参考。
+## 下文是kubernetes安装过程，使用kubeadm，过程详细，供新手菜鸟参考。
 
-##Docker与Kuberentes的安装与部署
+## Docker与Kuberentes的安装与部署
       # 环境：centos 7(实验环境)
       #  集群网络： 192.168.0.50    k8s-master
       #            192.168.0.51    k8s-node1
       #            192.168.0.52    k8s-node2
-###1. 安装前的准备： 
+### 1. 安装前的准备： 
 ####    1> 最好先固定ip，方法不展示
 ####    2> 关闭防火墙，禁用SELinux,让容器可以读取主机文件系统
        $ systemctl disabled firewalld
@@ -20,19 +20,19 @@
 ####    4> 修改hostname
        $ vim /etc/hostname    #修改为k8s节点名称
        $ hostname $(cat /etc/hostname)    #立即生效
-###2. 安装Docker: 
+### 2. 安装Docker: 
     # 阿里云镜像源
-      # step 1: 安装必要的一些系统工具
+    #step 1: 安装必要的一些系统工具
       sudo yum install -y yum-utils device-mapper-persistent-data lvm2
-      # Step 2: 添加软件源信息
+    #Step 2: 添加软件源信息
       sudo yum-config-manager --add-repo http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
-      # Step 3: 更新并安装 Docker-CE
+    #Step 3: 更新并安装 Docker-CE
       sudo yum makecache fast
       sudo yum -y install docker-ce
-      # Step 4: 开启Docker服务
+    #Step 4: 开启Docker服务
       sudo service docker startm2
   
-    其他安装注意事项：
+  #### 其他安装注意事项：
        
         # 官方软件源默认启用了最新的软件，您可以通过编辑软件源的方式获取各个版本的软件包。例如官方并没有将测试版本的软件源置为可用，你可以通                 过以下方式开启。同理可以开启各种测试版本等。
         # vim /etc/yum.repos.d/docker-ce.repo
