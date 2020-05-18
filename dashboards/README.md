@@ -1,5 +1,6 @@
 # dashboard组件  
-       dashboard组件的安装
+       dashboard组件的安装  
+       在 Kubernetes 社区中，有一个很受欢迎的 Dashboard 项目，它可以给用户提供一个可视化的 Web 界面来查看当前集群的各种信息。用户可以用 Kubernetes Dashboard 部署容器化的应用、监控应用的状态、执行故障排查任务以及管理 Kubernetes 各种资源。
 ## 部署dashboard
   直接执行dashboard.yaml  
   结果： 运行2个pod和service
@@ -31,5 +32,5 @@
   kubectl -n kubernetes-dashboard describe secret $(kubectl -n kubernetes-dashboard get secret | grep admin-user | awk '{print $1}')  
   找到token复制
 ## 登录
-  https://ip:端口
+  https://ip:端口  
   例子中： https://192.168.0.50:30443
