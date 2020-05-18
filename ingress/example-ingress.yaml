@@ -1,0 +1,13 @@
+apiVersion: networking.k8s.io/v1beta1         # kubernetes1.16之后改为该api，之前为extensions/v1beta1
+kind: Ingress
+metadata: 
+  name: grafana                                 
+  namespace: istio-system                     # namespace
+spec: 
+  rules: 
+  - host: natian.grafana.com                  # 访问ip域名
+    http:
+      paths: 
+      - backend: 
+          serviceName: grafana                # 服务名称
+          servicePort: 3000                   # 服务端口
