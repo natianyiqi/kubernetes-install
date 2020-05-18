@@ -1,26 +1,26 @@
-本项目目录： 
+#项目目录 
   kubernetes  --ingress     --dashboard     --prometheus+grafana
  
-下文是kubernetes安装过程，使用kubeadm，过程详细，供新手菜鸟参考。
+##下文是kubernetes安装过程，使用kubeadm，过程详细，供新手菜鸟参考。
 
-Docker与Kuberentes的安装与部署
+##Docker与Kuberentes的安装与部署
       # 环境：centos 7(实验环境)
       #  集群网络： 192.168.0.50    k8s-master
       #            192.168.0.51    k8s-node1
       #            192.168.0.52    k8s-node2
-1. 安装前的准备： 
-    1> 最好先固定ip，方法不展示
-    2> 关闭防火墙，禁用SELinux,让容器可以读取主机文件系统
+###1. 安装前的准备： 
+####    1> 最好先固定ip，方法不展示
+####    2> 关闭防火墙，禁用SELinux,让容器可以读取主机文件系统
        $ systemctl disabled firewalld
        $ systemctl stop firewalld
        $ setenforce 0
-    3> 关闭交换空间
+####    3> 关闭交换空间
        $ swapoff -a
        $ vim /etc/fstab       #注释掉swap那一整行
-    4> 修改hostname
+####    4> 修改hostname
        $ vim /etc/hostname    #修改为k8s节点名称
        $ hostname $(cat /etc/hostname)    #立即生效
-2. 安装Docker: 
+###2. 安装Docker: 
     # 阿里云镜像源
       # step 1: 安装必要的一些系统工具
       sudo yum install -y yum-utils device-mapper-persistent-data lvm2
