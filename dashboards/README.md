@@ -4,7 +4,7 @@
 ## 部署dashboard
        直接执行dashboard.yaml  
        结果： 运行2个pod和service              namespace: kubernetes-dashboard
-## 暴露端口
+## 暴露端口(以下方式二选一)
  ### 命令行方式
     kubectl  patch svc kubernetes-dashboard -n kubernetes-dashboard \
     -p '{"spec":{"type":"NodePort","ports":[{"port":443,"targetPort":8443,"nodePort":30443}]}}'
