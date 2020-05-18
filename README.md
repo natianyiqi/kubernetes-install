@@ -10,16 +10,16 @@
       #            192.168.0.52    k8s-node2
 ### 1. 安装前的准备： 
  1. 最好先固定ip，方法不展示
- 2. 关闭防火墙，禁用SELinux,让容器可以读取主机文件系统
-       $ systemctl disabled firewalld
-       $ systemctl stop firewalld
-       $ setenforce 0
- 3. 关闭交换空间
-       $ swapoff -a
-       $ vim /etc/fstab       #注释掉swap那一整行
- 4. 修改hostname
-       $ vim /etc/hostname    #修改为k8s节点名称
-       $ hostname $(cat /etc/hostname)    #立即生效
+ 2. 关闭防火墙，禁用SELinux,让容器可以读取主机文件系统  
+       $ systemctl disabled firewalld  
+       $ systemctl stop firewalld  
+       $ setenforce 0  
+ 3. 关闭交换空间  
+       $ swapoff -a  
+       $ vim /etc/fstab       #注释掉swap那一整行  
+ 4. 修改hostname  
+       $ vim /etc/hostname    #修改为k8s节点名称  
+       $ hostname $(cat /etc/hostname)    #立即生效  
 ### 2. 安装Docker: 
     # 阿里云镜像源
     #step 1: 安装必要的一些系统工具
