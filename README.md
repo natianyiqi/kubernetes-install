@@ -9,15 +9,15 @@
       #            192.168.0.51    k8s-node1
       #            192.168.0.52    k8s-node2
 ### 1. 安装前的准备： 
-####    1> 最好先固定ip，方法不展示
-####    2> 关闭防火墙，禁用SELinux,让容器可以读取主机文件系统
+ 1. 最好先固定ip，方法不展示
+ 2. 关闭防火墙，禁用SELinux,让容器可以读取主机文件系统
        $ systemctl disabled firewalld
        $ systemctl stop firewalld
        $ setenforce 0
-####    3> 关闭交换空间
+ 3. 关闭交换空间
        $ swapoff -a
        $ vim /etc/fstab       #注释掉swap那一整行
-####    4> 修改hostname
+ 4. 修改hostname
        $ vim /etc/hostname    #修改为k8s节点名称
        $ hostname $(cat /etc/hostname)    #立即生效
 ### 2. 安装Docker: 
@@ -58,12 +58,12 @@
         # sudo yum-config-manager --add-repo http://mirrors.aliyuncs.com/docker-ce/linux/centos/docker-ce.repo
         # VPC网络：
         # sudo yum-config-manager --add-repo http://mirrors.could.aliyuncs.com/docker-ce/linux/centos/docker-ce.repo
-### 3.修改linux内核
-   $vim /etc/sysctl.conf       # 在该文件中添加如下内容
-      net.bridge.bridge-nf-call-ip6tables = 1
-      net.bridge.bridge-nf-call-iptables = 1
+### 3. 修改linux内核
+   $vim /etc/sysctl.conf       # 在该文件中添加如下内容  
+      net.bridge.bridge-nf-call-ip6tables = 1  
+      net.bridge.bridge-nf-call-iptables = 1  
    $ sysctl -p  
-### 4.修改Docker 镜像源(改为阿里镜像源)
+### 4. 修改Docker 镜像源(改为阿里镜像源)
   $sudo mkdir -p /etc/docker
   $sudo tee /etc/docker/daemon.json <<-'EOF'
   {
@@ -72,20 +72,20 @@
   EOF
   $sudo systemctl daemon-reload
   $sudo systemctl restart docker
-### 5.安装kubernetes
-  #step1：配置国内yum源
+### 5. 安装kubernetes
+  ###### step1：配置国内yum源
    $vim /etc/yum.repos.d/kubernetes.repo
     [kubernetes]
     name=Kubernetes Repository
     baseurl=http://mirrors.aliyun.com/kubernetes/yum/repos/kubernetes-el7-x86_64/
     enabled=1
     gpgcheck=0
-  #step2：运行yum安装kubeadm，kubelet，kubectl（指定版本）worker节点可以不安装kubectl
+  ###### step2：运行yum安装kubeadm，kubelet，kubectl（指定版本）worker节点可以不安装kubectl
    $yum install -y kubeadm-1.16.0 kubectl-1.16.0 kubelet-1.16.0 --disableexcludes=kubernetes
-  #step3：启动docker&kubelet服务并设置开机自动启动
+  ###### step3：启动docker&kubelet服务并设置开机自动启动
    $systemctl enable docker && systemctl start docker
    $systemctl enable kubelet && systemctl start kubelet
-  #step4：拉取镜像并tag为所需镜像
+  ###### step4：拉取镜像并tag为所需镜像
     1> 查看所需镜像
    $kubeadm config images list --kubernetes-version v1.16.0
                     k8s.gcr.io/kube-apiserver:v1.16.0
