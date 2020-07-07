@@ -70,7 +70,7 @@
     $sudo mkdir -p /etc/docker
     $sudo tee /etc/docker/daemon.json <<-'EOF'
     {
-      "registry-mirrors": ["https://i1c85u16.mirror.aliyuncs.com"]    
+      "registry-mirrors": ["https://xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.mirror.aliyuncs.com"]       # xxxxxxxxxxxxxxxxxxxx部分可以自己注册一个阿里云账号，在容器镜像服务中查找镜像加速器页面。
     }
     EOF
     $sudo systemctl daemon-reload
