@@ -16,6 +16,7 @@ spec:
     spec:
       hostPID: true
       hostIPC: true
+      # 这里使用hostnetwork为true，使用宿主机网络，会监控在宿主机上面的9100口；
       hostNetwork: true
       containers:
       - name: node-exporter
