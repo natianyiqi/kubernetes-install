@@ -47,78 +47,11 @@
     。。。
 ## 安装
 ### node-exporter
-    # 这里把node-exporter部署为Pod，使用DaemonSet资源类型部署，方便维护，这样每一个kubernetes集群节点都会部署一个，资源配置清单如下：
-    cat node-exporter.yaml
-        apiVersion: apps/v1
-        kind: DaemonSet
-        metadata:
-          name: node-exporter
-          namespace: monitor
-          labels:
-            name: node-exporter
-        spec:
-          selector:
-            matchLabels:
-             name: node-exporter
-          template:
-            metadata:
-              labels:
-                name: node-exporter
-            spec:
-              hostPID: true
-              hostIPC: true
-              hostNetwork: true
-              containers:
-              - name: node-exporter
-                image: prom/node-exporter:latest
-                ports:
-                - containerPort: 9100
-                resources:
-                  requests:
-                    cpu: 0.15
-                securityContext:
-                  privileged: true
-                args:
-                - --path.procfs
-                - /host/proc
-                - --path.sysfs
-                - /host/sys
-                - --collector.filesystem.ignored-mount-points
-                - '"^/(sys|proc|dev|host|etc)($|/)"'
-                volumeMounts:
-                - name: dev
-                  mountPath: /host/dev
-                - name: proc
-                  mountPath: /host/proc
-                - name: sys
-                  mountPath: /host/sys
-                - name: rootfs
-                  mountPath: /rootfs
-              tolerations:
-              - key: "node-role.kubernetes.io/master"
-                operator: "Exists"
-                effect: "NoSchedule"
-              volumes:
-                - name: proc
-                  hostPath:
-                    path: /proc
-                - name: dev
-                  hostPath:
-                    path: /dev
-                - name: sys
-                  hostPath:
-                    path: /sys
-                - name: rootfs
-                  hostPath:
-                    path: /
-            # 这里使用hostnetwork为true，使用宿主机网络，会监控在宿主机上面的9100口；
-## 验证
-### 创建 DaemonSet 资源类型的 Pod
-        [root@master01 monitor]# kubectl apply -f node-exporter.yaml
+    # 这里把node-exporter部署为Pod，使用DaemonSet资源类型部署，方便维护，这样每一个kubernetes集群节点都会部署一个，资源配置清单在prometheus文件夹下。
+    # 创建 DaemonSet 资源类型的 Pod
+        kubectl apply -f node-exporter.yaml
         daemonset.apps/node-exporter created
-        [root@master01 monitor]#
-
-        # 验证
+    # 验证
         [root@master01 monitor]# curl http://127.0.0.1:9100/metrics|more
           % Total % Received % Xferd Average Speed Time Time Time Current
                                          Dload Upload Total Spent Left Speed
@@ -134,113 +67,82 @@
         # HELP go_goroutines Number of goroutines that currently exist.
         # TYPE go_goroutines gauge
         go_goroutines 6
-### 查看Pod
-    [root@master01 monitor]# kubectl get pods -n monitor -o wide
-    NAME READY STATUS RESTARTS AGE IP NODE NOMINATED NODE READINESS GATES
-    node-exporter-c67rd 1/1     Running 0          11m   172.31.117.228   node01 <none>           <none>
-    node-exporter-jrzfx 1/1     Running 0          11m   172.31.117.227   master03 <none>           <none>
-    node-exporter-mqsw5 1/1     Running 0          11m   172.31.117.225   master01 <none>           <none>
-    node-exporter-zhnl4 1/1     Running 0          11m   172.31.117.226   master02 <none>           <none>
-    # 从上面可以看出，已经监控到所有宿主机 CPU、内存、负载、网络流量、文件系统等指标信息，后续可供 Prometheus 收集。
-        kube-state-metrics
-        Kube-state-metrics 它是通过监听 kube-apiserv括r 而生成有关资源对象的指标信息，主要包括Node、Pod、Service 、Endpoint、Namespace等资源的metric，需要注意的是kube-state-  metrics只是简单的提供一个metrics数据，并不会存储这些指标数据，后续可以使用Prometheus 来抓取这些数据然后存储，它主要关注的是业务资源workload的元数据信息。
-### 这里也需要一个ServiceAccount帐户并授权绑定
-        [root@master01 monitor]# cat kube-state-metrics-rbac.yaml
-        ---
-        apiVersion: v1
-        kind: ServiceAccount
-        metadata:
-          name: kube-state-metrics
-          namespace: kube-system
-        ---
-        apiVersion: rbac.authorization.k8s.io/v1
-        kind: ClusterRole
-        metadata:
-          name: kube-state-metrics
-        rules:
-        - apiGroups: [""]
-          resources: ["nodes", "pods", "services", "resourcequotas", "replicationcontrollers", "limitranges", "persistentvolumeclaims", "persistentvolumes", "namespaces", "endpoints"]
-          verbs: ["list", "watch"]
-        - apiGroups: ["extensions"]
-          resources: ["daemonsets", "deployments", "replicasets"]
-          verbs: ["list", "watch"]
-        - apiGroups: ["apps"]
-          resources: ["statefulsets"]
-          verbs: ["list", "watch"]
-        - apiGroups: ["batch"]
-          resources: ["cronjobs", "jobs"]
-          verbs: ["list", "watch"]
-        - apiGroups: ["autoscaling"]
-          resources: ["horizontalpodautoscalers"]
-          verbs: ["list", "watch"]
-        ---
-        apiVersion: rbac.authorization.k8s.io/v1
-        kind: ClusterRoleBinding
-        metadata:
-          name: kube-state-metrics
-        roleRef:
-          apiGroup: rbac.authorization.k8s.io
-          kind: ClusterRole
-          name: kube-state-metrics
-        subjects:
-        - kind: ServiceAccount
-          name: kube-state-metrics
-          namespace: kube-system
-###  创建 Pod 及service 配置文件
-        [root@master01 monitor]# cat kube-state-metrics-deployment-svc.yaml
-        apiVersion: apps/v1
-        kind: Deployment
-        metadata:
-          name: kube-state-metrics
-          namespace: kube-system
-        spec:
-          replicas: 1
-          selector:
-            matchLabels:
-              app: kube-state-metrics
-          template:
-            metadata:
-              labels:
-                app: kube-state-metrics
-            spec:
-              serviceAccountName: kube-state-metrics
-              containers:
-              - name: kube-state-metrics
-                image: quay.io/coreos/kube-state-metrics:v1.9.5
-                ports:
-                - containerPort: 8080
-
-        ---
-        apiVersion: v1
-        kind: Service
-        metadata:
-          annotations:
-            prometheus.io/scrape: 'true'
-          name: kube-state-metrics
-          namespace: kube-system
-          labels:
-            app: kube-state-metrics
-        spec:
-          ports:
-          - name: kube-state-metrics
-            port: 8080
-            protocol: TCP
-          selector:
-            app: kube-state-metrics
-###  部署及查看
+    # 查看Pod
+        [root@master01 monitor]# kubectl get pods -n monitor -o wide
+        NAME READY STATUS RESTARTS AGE IP NODE NOMINATED NODE READINESS GATES
+        node-exporter-c67rd 1/1     Running 0          11m   172.31.117.228   node01 <none>           <none>
+        node-exporter-jrzfx 1/1     Running 0          11m   172.31.117.227   master03 <none>           <none>
+        node-exporter-mqsw5 1/1     Running 0          11m   172.31.117.225   master01 <none>           <none>
+        node-exporter-zhnl4 1/1     Running 0          11m   172.31.117.226   master02 <none>           <none>
+        # 从上面可以看出，已经监控到所有宿主机 CPU、内存、负载、网络流量、文件系统等指标信息，后续可供 Prometheus 收集。
+### kube-state-metrics
+    # Kube-state-metrics 它是通过监听 kube-apiserv括r 而生成有关资源对象的指标信息，主要包括Node、Pod、Service 、Endpoint、Namespace等资源的metric，需要注意的是kube-state-  metrics只是简单的提供一个metrics数据，并不会存储这些指标数据，后续可以使用Prometheus 来抓取这些数据然后存储，它主要关注的是业务资源workload的元数据信息。
+    # 这里也需要一个ServiceAccount帐户并授权绑定
+    #  创建 Pod 及service 配置文件
+    # 部署及查看
         [root@master01 monitor]# kubectl apply -f kube-state-metrics-rbac.yaml
-        serviceaccount/kube-state-metrics created
-        clusterrole.rbac.authorization.k8s.io/kube-state-metrics created
-        clusterrolebinding.rbac.authorization.k8s.io/kube-state-metrics created
+            serviceaccount/kube-state-metrics created
+            clusterrole.rbac.authorization.k8s.io/kube-state-metrics created
+            clusterrolebinding.rbac.authorization.k8s.io/kube-state-metrics created
         [root@master01 monitor]# kubectl apply -f kube-state-metrics-deployment-svc.yaml
-        deployment.apps/kube-state-metrics created
-        service/kube-state-metrics created
+            deployment.apps/kube-state-metrics created
+            service/kube-state-metrics created
         [root@master01 monitor]#
-
-        # 查看部署情况
+    # 查看部署情况
         [root@master01 monitor]# kubectl get clusterrolebinding |grep kube-state
         kube-state-metrics ClusterRole/kube-state-metrics 4m4s
         [root@master01 monitor]#
         [root@master01 monitor]# kubectl get pods -n kube-system |grep kube-state-metrics
         kube-state-metrics-84b8477f75-65gcg 1/1     Running 0          4m26s
-        
+### metrics-server
+    # 前期准备
+    # 在较早的版本中，集群监控使用的是 heaspter，集群通过它的监控指标实现HPA、VPA和kubectl top等，在新版本中由 metrics-server 替代，至于原因，可以Google一下。metrics-server 是 kubernetes 监控体系中的核心组件之一，从 kubelet 中收集 Pod/Node 等资源指标，然后对这些指标数据进行聚合，最后再通过 Kube-apiserver 中 Metrics API( /apis/metrics.k8s.io/)公开暴露，metrics-server只存储最新的指标数据（CPU/Memory），并不会把指标数据转发给第三方目标，如果想使用 Metrics-server 指标数据，就需要对集群做一些特殊的配置，这些配置默认情况下，是不会安装的，具体配置如下几点，1、kube-apiserver要能访问到metrics-server；2、kube-apiserver启用参数中启用聚合层功能；3、组件要有kubectl的认证配置并且绑定到Metrics-server；4、Pod/Node指标需要由Summary API通过Kubelet公开。
+    [root@master01 ~]# cd /etc/kubernetes/manifests/
+    [root@master01 manifests]# ls
+    kube-apiserver.yaml kube-controller-manager.yaml kube-scheduler.yaml
+    [root@master01 manifests]# pwd
+    /etc/kubernetes/manifests
+    #  二进制安装的话，进入到以上目录，并修改kube-apiserver.yaml，主要是加上- --enable-aggregator-routing=true，其它的默认应该是有的，修改如下配置：
+          .............
+          - --requestheader-allowed-names=front-proxy-client
+            - --requestheader-client-ca-file=/etc/kubernetes/pki/front-proxy-ca.crt
+            - --requestheader-extra-headers-prefix=X-Remote-Extra-
+            - --requestheader-group-headers=X-Remote-Group
+            - --requestheader-username-headers=X-Remote-User
+            - --enable-aggregator-routing=true
+          .............
+    # 部署metrics-server
+      kubectl apply -f components.yaml
+## 最终效果
+        [k8s-master@k8s-master metrics-server]$ kubectl top node
+        NAME         CPU(cores)   CPU%   MEMORY(bytes)   MEMORY%   
+        k8s-master   965m         24%    1668Mi          53%       
+        k8s-node1    476m         11%    793Mi           46%       
+        k8s-node2    275m         6%     661Mi           38%       
+        [k8s-master@k8s-master metrics-server]$ kubectl top pods
+        NAME         CPU(cores)   MEMORY(bytes)   
+        volume-pod   7m           74Mi            
+## 坑1
+        root@master01 kubernetes]# kubectl top node
+        error: metrics not available yet
+        [root@master01 kubernetes]#
+        # 查看错误日志
+        unable to fully collect metrics: [unable to fully scrape metrics from source kubelet_summary:master01: unable to fetch metrics from Kubelet master01 (master01): Get https://master01:10250/stats/summary?only_cpu_and_memory=true: dial tcp: lookup master01 on 10.96.0.10:53: no such host, unable to fully scrape metrics from source kubelet_summary:master03: unable to fetch metrics from Kubelet master03 (master03): Get https://master03:10250/stats/summary?only_cpu_and_memory=true: dial tcp: lookup master03 on 10.96.0.10:53: no such host, unable to fully scrape metrics from source kubelet_summary:master02: unable to fetch metrics from Kubelet master02 (master02): Get https://master02:10250/stats/summary?only_cpu_and_memory=true: dial tcp: lookup master02 on 10.96.0.10:53: no such host, unable to fully scrape metrics from source kubelet_summary:node01: unable to fetch metrics from Kubelet node01 (node01): Get https://node01:10250/stats/summary?only_cpu_and_memory=true: dial tcp: lookup node01 on 10.96.0.10:53: no such host]
+        # 这个坑的解决方式是
+        - --kubelet-insecure-tls ，修改 components.yaml文件中的metrics-server-deployment部分， 添加这个参数，删除再重新创建
+## 坑2
+        [root@master01 kubernetes]# kubectl top node
+        Error from server (ServiceUnavailable): the server is currently unable to handle the request (get nodes.metrics.k8s.io)
+        [root@master01 kubernetes]#
+
+        [root@master01 kubernetes]# kubectl logs -f metrics-server-64b57fd654-bt6fx -n kube-system
+        E0331 07:03:59.658787       1 reststorage.go:135] unable to fetch node metrics for node "master03": no metrics known for node
+        E0331 07:03:59.658793       1 reststorage.go:135] unable to fetch node metrics for node "node01": no metrics known for node
+        # 这个坑的解决方式是：
+        添加 - --kubelet-preferred-address-types=InternalIP 启动参数 ，修改 componentes.yaml 中的metrics-server-deployment部分， 添加这个参数，最终如下所示，再删除重建即可
+                args:
+                  - --cert-dir=/tmp
+                  - --secure-port=4443
+                  - '--kubelet-preferred-address-types=InternalIP'
+                  - '--kubelet-insecure-tls'
+
