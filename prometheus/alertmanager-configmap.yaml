@@ -1,0 +1,25 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: alertmanager
+  namespace: monitor
+data:
+  alertmanager.yml: |-
+    global:
+      resolve_timeout: 1m
+      smtp_smarthost: 'smtp.163.com:25'
+      smtp_from: '17864181943@163.com'
+      smtp_auth_username: 'natian'
+      smtp_auth_password: 'natian'
+      smtp_require_tls: false
+    route:
+      group_by: [alertname]
+      group_wait: 10s
+      group_interval: 10s
+      repeat_interval: 10m
+      receiver: default-receiver
+    receivers:
+    - name: 'default-receiver'
+      email_configs:
+      - to: 'k8svip@163.com'
+        send_resolved: true

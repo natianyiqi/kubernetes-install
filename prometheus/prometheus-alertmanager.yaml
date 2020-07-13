@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus-server
+  namespace: monitor
+  labels:
+    app: prometheus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+      component: server
+  template:
+    metadata:
+      labels:
+        app: prometheus
+        component: server
+      annotations:
+        prometheus.io/scrape: 'true'
+    spec:
+      nodeName: k8s-node1
+      serviceAccountName: monitor
+      containers:
+      - name: prometheus
+        image: prom/prometheus:latest
+        imagePullPolicy: IfNotPresent
+        command:
+          - prometheus
+          - --config.file=/etc/prometheus/prometheus.yml
+          - --storage.tsdb.path=/prometheus
+          - --storage.tsdb.retention=720h
+          - --web.enable-admin-api
+          - --web.enable-lifecycle
+        ports:
+        - containerPort: 9090
+          protocol: TCP
+        volumeMounts:
+        - mountPath: /etc/prometheus
+          name: prometheus-config
+        - mountPath: /prometheus/
+          name: prometheus-storage-volume
+      - name: alertmanager
+        image: prom/alertmanager:latest
+        imagePullPolicy: IfNotPresent
+        args:
+        - "--config.file=/etc/alertmanager/alertmanager.yml"
+        - "--cluster.advertise-address=0.0.0.0:9093"
+        - "--log.level=debug"
+        ports:
+        - containerPort: 9093
+          protocol: TCP
+          name: alertmanager
+        volumeMounts:
+        - name: alertmanager-config
+          mountPath: /etc/alertmanager
+        - name: alertmanager-storage
+          mountPath: /alertmanager
+        - name: localtime
+          mountPath: /etc/localtime
+      securityContext:
+        runAsUser: 0
+      volumes:
+        - name: prometheus-config
+          configMap:
+            name: prometheus-config
+        - name: prometheus-storage-volume
+          hostPath:
+           path: /data
+           type: Directory
+        - name: alertmanager-config
+          configMap:
+            name: alertmanager
+        - name: alertmanager-storage
+          hostPath:
+           path: /data/alertmanager
+           type: DirectoryOrCreate
+        - name: localtime
+          hostPath:
+           path: /usr/share/zoneinfo/Asia/Shanghai
