@@ -46,4 +46,201 @@
     container_cpu_load_average_10s{container="",id="/kubepods/besteffort",image="",name="",namespace="",pod=""} 0 1585634073752
     。。。
 ## 安装
+### node-exporter
+    # 这里把node-exporter部署为Pod，使用DaemonSet资源类型部署，方便维护，这样每一个kubernetes集群节点都会部署一个，资源配置清单如下：
+    cat node-exporter.yaml
+        apiVersion: apps/v1
+        kind: DaemonSet
+        metadata:
+          name: node-exporter
+          namespace: monitor
+          labels:
+            name: node-exporter
+        spec:
+          selector:
+            matchLabels:
+             name: node-exporter
+          template:
+            metadata:
+              labels:
+                name: node-exporter
+            spec:
+              hostPID: true
+              hostIPC: true
+              hostNetwork: true
+              containers:
+              - name: node-exporter
+                image: prom/node-exporter:latest
+                ports:
+                - containerPort: 9100
+                resources:
+                  requests:
+                    cpu: 0.15
+                securityContext:
+                  privileged: true
+                args:
+                - --path.procfs
+                - /host/proc
+                - --path.sysfs
+                - /host/sys
+                - --collector.filesystem.ignored-mount-points
+                - '"^/(sys|proc|dev|host|etc)($|/)"'
+                volumeMounts:
+                - name: dev
+                  mountPath: /host/dev
+                - name: proc
+                  mountPath: /host/proc
+                - name: sys
+                  mountPath: /host/sys
+                - name: rootfs
+                  mountPath: /rootfs
+              tolerations:
+              - key: "node-role.kubernetes.io/master"
+                operator: "Exists"
+                effect: "NoSchedule"
+              volumes:
+                - name: proc
+                  hostPath:
+                    path: /proc
+                - name: dev
+                  hostPath:
+                    path: /dev
+                - name: sys
+                  hostPath:
+                    path: /sys
+                - name: rootfs
+                  hostPath:
+                    path: /
+            # 这里使用hostnetwork为true，使用宿主机网络，会监控在宿主机上面的9100口；
+## 验证
+### 创建 DaemonSet 资源类型的 Pod
+        [root@master01 monitor]# kubectl apply -f node-exporter.yaml
+        daemonset.apps/node-exporter created
+        [root@master01 monitor]#
 
+        # 验证
+        [root@master01 monitor]# curl http://127.0.0.1:9100/metrics|more
+          % Total % Received % Xferd Average Speed Time Time Time Current
+                                         Dload Upload Total Spent Left Speed
+          0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0# HELP go_gc_duration_seconds A summary of the GC invocation durations.
+        # TYPE go_gc_duration_seconds summary
+        go_gc_duration_seconds{quantile="0"} 0
+        go_gc_duration_seconds{quantile="0.25"} 0
+        go_gc_duration_seconds{quantile="0.5"} 0
+        go_gc_duration_seconds{quantile="0.75"} 0
+        go_gc_duration_seconds{quantile="1"} 0
+        go_gc_duration_seconds_sum 0
+        go_gc_duration_seconds_count 0
+        # HELP go_goroutines Number of goroutines that currently exist.
+        # TYPE go_goroutines gauge
+        go_goroutines 6
+### 查看Pod
+    [root@master01 monitor]# kubectl get pods -n monitor -o wide
+    NAME READY STATUS RESTARTS AGE IP NODE NOMINATED NODE READINESS GATES
+    node-exporter-c67rd 1/1     Running 0          11m   172.31.117.228   node01 <none>           <none>
+    node-exporter-jrzfx 1/1     Running 0          11m   172.31.117.227   master03 <none>           <none>
+    node-exporter-mqsw5 1/1     Running 0          11m   172.31.117.225   master01 <none>           <none>
+    node-exporter-zhnl4 1/1     Running 0          11m   172.31.117.226   master02 <none>           <none>
+    # 从上面可以看出，已经监控到所有宿主机 CPU、内存、负载、网络流量、文件系统等指标信息，后续可供 Prometheus 收集。
+        kube-state-metrics
+        Kube-state-metrics 它是通过监听 kube-apiserv括r 而生成有关资源对象的指标信息，主要包括Node、Pod、Service 、Endpoint、Namespace等资源的metric，需要注意的是kube-state-  metrics只是简单的提供一个metrics数据，并不会存储这些指标数据，后续可以使用Prometheus 来抓取这些数据然后存储，它主要关注的是业务资源workload的元数据信息。
+### 这里也需要一个ServiceAccount帐户并授权绑定
+        [root@master01 monitor]# cat kube-state-metrics-rbac.yaml
+        ---
+        apiVersion: v1
+        kind: ServiceAccount
+        metadata:
+          name: kube-state-metrics
+          namespace: kube-system
+        ---
+        apiVersion: rbac.authorization.k8s.io/v1
+        kind: ClusterRole
+        metadata:
+          name: kube-state-metrics
+        rules:
+        - apiGroups: [""]
+          resources: ["nodes", "pods", "services", "resourcequotas", "replicationcontrollers", "limitranges", "persistentvolumeclaims", "persistentvolumes", "namespaces", "endpoints"]
+          verbs: ["list", "watch"]
+        - apiGroups: ["extensions"]
+          resources: ["daemonsets", "deployments", "replicasets"]
+          verbs: ["list", "watch"]
+        - apiGroups: ["apps"]
+          resources: ["statefulsets"]
+          verbs: ["list", "watch"]
+        - apiGroups: ["batch"]
+          resources: ["cronjobs", "jobs"]
+          verbs: ["list", "watch"]
+        - apiGroups: ["autoscaling"]
+          resources: ["horizontalpodautoscalers"]
+          verbs: ["list", "watch"]
+        ---
+        apiVersion: rbac.authorization.k8s.io/v1
+        kind: ClusterRoleBinding
+        metadata:
+          name: kube-state-metrics
+        roleRef:
+          apiGroup: rbac.authorization.k8s.io
+          kind: ClusterRole
+          name: kube-state-metrics
+        subjects:
+        - kind: ServiceAccount
+          name: kube-state-metrics
+          namespace: kube-system
+###  创建 Pod 及service 配置文件
+        [root@master01 monitor]# cat kube-state-metrics-deployment-svc.yaml
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: kube-state-metrics
+          namespace: kube-system
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: kube-state-metrics
+          template:
+            metadata:
+              labels:
+                app: kube-state-metrics
+            spec:
+              serviceAccountName: kube-state-metrics
+              containers:
+              - name: kube-state-metrics
+                image: quay.io/coreos/kube-state-metrics:v1.9.5
+                ports:
+                - containerPort: 8080
+
+        ---
+        apiVersion: v1
+        kind: Service
+        metadata:
+          annotations:
+            prometheus.io/scrape: 'true'
+          name: kube-state-metrics
+          namespace: kube-system
+          labels:
+            app: kube-state-metrics
+        spec:
+          ports:
+          - name: kube-state-metrics
+            port: 8080
+            protocol: TCP
+          selector:
+            app: kube-state-metrics
+###  部署及查看
+        [root@master01 monitor]# kubectl apply -f kube-state-metrics-rbac.yaml
+        serviceaccount/kube-state-metrics created
+        clusterrole.rbac.authorization.k8s.io/kube-state-metrics created
+        clusterrolebinding.rbac.authorization.k8s.io/kube-state-metrics created
+        [root@master01 monitor]# kubectl apply -f kube-state-metrics-deployment-svc.yaml
+        deployment.apps/kube-state-metrics created
+        service/kube-state-metrics created
+        [root@master01 monitor]#
+
+        # 查看部署情况
+        [root@master01 monitor]# kubectl get clusterrolebinding |grep kube-state
+        kube-state-metrics ClusterRole/kube-state-metrics 4m4s
+        [root@master01 monitor]#
+        [root@master01 monitor]# kubectl get pods -n kube-system |grep kube-state-metrics
+        kube-state-metrics-84b8477f75-65gcg 1/1     Running 0          4m26s
+        
