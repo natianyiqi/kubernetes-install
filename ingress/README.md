@@ -21,7 +21,7 @@
                        servicePort: 3000                   # 服务端口
              修改完成后执行即可。
 ## 修改hosts
-    修改宿主机上的hosts文件 （windows位置： C:\Windows\System32\drivers\etc）
+    修改宿主机上的hosts文件 （windows位置： C:\Windows\System32\drivers\etc\hosts        Linux位置： /etc/hosts）
     增加该域名   
       192.168.0.50    grafana.prometheus.natian.com
 ## 访问
