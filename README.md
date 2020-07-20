@@ -7,7 +7,7 @@
 ## 下文是kubernetes安装过程，使用kubeadm，过程详细，供新手菜鸟参考。
 
 ## Docker与Kuberentes的安装与部署
-      # 环境：centos 7(实验环境)
+      # 环境：centos 7(实验环境)       (Ubuntu版本请查看其他ubuntu-k8s.md)
       # 集群网络： 192.168.0.50    k8s-master
       #           192.168.0.51    k8s-node1
       #           192.168.0.52    k8s-node2
